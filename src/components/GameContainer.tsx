@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Character, { CharacterType } from './Character';
 import Pet, { PetType } from './Pet';
@@ -150,7 +149,7 @@ const decisionTemplates: Record<string, Decision[]> = {
       id: 'eat-dog',
       text: 'Make "Mystery Meat" Tacos',
       type: 'eat',
-      description: 'The kids love taco night! They'll never suspect a thing...',
+      description: 'The kids love taco night! They will never suspect a thing...',
       consequences: {
         happiness: -4,
         guilt: 5,
@@ -238,7 +237,7 @@ const decisionTemplates: Record<string, Decision[]> = {
       id: 'giveaway-spider',
       text: 'Give to Science Teacher',
       type: 'giveaway',
-      description: 'The school's science lab could use it for education.',
+      description: 'The school\'s science lab could use it for education.',
       consequences: {
         happiness: 0,
         guilt: 0,
@@ -264,7 +263,7 @@ const decisionTemplates: Record<string, Decision[]> = {
       id: 'eat-snail',
       text: 'Prepare "Escargot"',
       type: 'eat',
-      description: 'A fancy French delicacy! The kids won't recognize it.',
+      description: 'A fancy French delicacy! The kids won\'t recognize it.',
       consequences: {
         happiness: 0,
         guilt: 1,
