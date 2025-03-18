@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import Player from './Player';
 import Platform from './Platform';
@@ -77,6 +78,17 @@ const GameContainer = () => {
   const jumpPressed = useKeyPress('ArrowUp');
   const spacePressed = useKeyPress(' ');
   const restartPressed = useKeyPress('r');
+  
+  // Initialize jump sound
+  useEffect(() => {
+    const sound = new Audio(JUMP_SOUND_URL);
+    sound.volume = 0.3;
+    setJumpSound(sound);
+    
+    return () => {
+      sound.pause();
+    };
+  }, []);
   
   // Reset game
   const resetGame = () => {
@@ -191,13 +203,14 @@ const GameContainer = () => {
         });
         
         // Check for coin collisions
-        let score = prevState.coins.some(coin => {
+        let score = prevState.score;
+        const coins = prevState.coins.filter(coin => {
           const collision = checkCollision(player, coin);
           if (collision) {
             score += 10;
           }
           return !collision;
-        }) ? prevState.score + 10 : prevState.score;
+        });
         
         // Check for enemy collisions
         let lives = prevState.lives;

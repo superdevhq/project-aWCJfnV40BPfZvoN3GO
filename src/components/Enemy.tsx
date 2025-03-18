@@ -19,9 +19,9 @@ const Enemy = ({ x, y, width, height }: EnemyProps) => {
     >
       {/* Enemy body */}
       <div className="w-full h-full relative">
-        <div className="absolute inset-0 bg-brown-500 rounded-t-lg overflow-hidden">
+        <div className="absolute inset-0 bg-green-700 rounded-t-lg overflow-hidden">
           {/* Shell */}
-          <div className="absolute inset-[15%] bg-green-700 rounded-full">
+          <div className="absolute inset-[15%] bg-green-800 rounded-full">
             <div className="absolute inset-[20%] bg-green-600 rounded-full"></div>
           </div>
           
