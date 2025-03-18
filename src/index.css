@@ -2,7 +2,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+ 
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -10,133 +10,153 @@
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-
+ 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-
+ 
     --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
-
+ 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-
+ 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-
+ 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-
+ 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-
+ 
     --radius: 0.5rem;
-
-    /* Game-specific colors */
-    --game-bg: 215 30% 12%;
-    --game-text: 40 100% 97%;
-    --game-primary: 160 84% 39%;
-    --game-secondary: 280 75% 60%;
+    
+    /* Game specific colors */
+    --game-bg: 210 50% 90%;
+    --game-panel: 215 30% 20%;
+    --game-border: 215 30% 30%;
+    --game-text: 0 0% 100%;
     --game-accent: 35 100% 50%;
-    --game-panel: 215 30% 16%;
-    --game-border: 215 30% 22%;
+    
+    /* Skin tone */
+    --skin-200: 30 70% 80%;
+    --brown-500: 30 50% 40%;
   }
-
+ 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
+ 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
-
+ 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-
+ 
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
-
+ 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-
+ 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
+ 
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-
+ 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
+ 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+    
+    /* Game specific colors */
+    --game-bg: 215 30% 15%;
+    --game-panel: 215 30% 20%;
+    --game-border: 215 30% 30%;
+    --game-text: 0 0% 100%;
+    --game-accent: 35 100% 50%;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Pixel art styling */
+/* Game specific styles */
+.bg-game-bg {
+  background-color: hsl(var(--game-bg));
+}
+
+.bg-game-panel {
+  background-color: hsl(var(--game-panel));
+}
+
+.bg-game-border {
+  background-color: hsl(var(--game-border));
+}
+
+.text-game-text {
+  color: hsl(var(--game-text));
+}
+
+.text-game-accent {
+  color: hsl(var(--game-accent));
+}
+
+.border-game-accent {
+  border-color: hsl(var(--game-accent));
+}
+
+.bg-skin-200 {
+  background-color: hsl(var(--skin-200));
+}
+
+.bg-brown-500 {
+  background-color: hsl(var(--brown-500));
+}
+
+/* Game animations */
+@keyframes pixel-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.pixel-bounce {
+  animation: pixel-bounce 1s ease-in-out infinite;
+}
+
+@keyframes pixel-fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.pixel-fade {
+  animation: pixel-fade 0.5s ease-in-out;
+}
+
+/* Pixel art rendering */
 .pixel-art {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-}
-
-/* Game-specific styles */
-.game-container {
-  background-color: hsl(var(--game-bg));
-  color: hsl(var(--game-text));
-}
-
-.game-panel {
-  background-color: hsl(var(--game-panel));
-  border: 2px solid hsl(var(--game-border));
-}
-
-.game-button {
-  background-color: hsl(var(--game-primary));
-  transition: all 0.2s ease;
-}
-
-.game-button:hover {
-  background-color: hsl(var(--game-accent));
-  transform: scale(1.05);
-}
-
-.game-button-secondary {
-  background-color: hsl(var(--game-secondary));
-}
-
-.game-button-secondary:hover {
-  background-color: hsl(var(--game-accent));
-}
-
-/* Pixel animations */
-@keyframes pixel-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-
-.pixel-bounce {
-  animation: pixel-bounce 1s infinite;
-}
-
-@keyframes pixel-fade {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-.pixel-fade {
-  animation: pixel-fade 0.5s forwards;
 }

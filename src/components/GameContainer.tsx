@@ -1,486 +1,338 @@
-import { useState, useEffect } from 'react';
-import Character, { CharacterType } from './Character';
-import Pet, { PetType } from './Pet';
-import DialogueBox from './DialogueBox';
-import DecisionPanel, { Decision } from './DecisionPanel';
+
+import { useState, useEffect, useRef } from 'react';
+import Player from './Player';
+import Platform from './Platform';
+import Enemy from './Enemy';
+import Coin from './Coin';
 import GameHUD from './GameHUD';
-import GameIntro from './GameIntro';
+import { useKeyPress } from '../hooks/useKeyPress';
 
-// Game data
-const dadCharacter: CharacterType = {
-  id: 'dad',
-  type: 'dad',
-  name: 'Frank',
-  mood: 'neutral',
-  sprite: 'https://i.imgur.com/JFHyqsE.png' // Placeholder image
+// Game constants
+const GRAVITY = 0.5;
+const JUMP_FORCE = -12;
+const MOVEMENT_SPEED = 5;
+
+// Game types
+export interface GameObject {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  velocityX?: number;
+  velocityY?: number;
+}
+
+export interface GameState {
+  player: GameObject;
+  platforms: GameObject[];
+  enemies: GameObject[];
+  coins: GameObject[];
+  score: number;
+  lives: number;
+  gameOver: boolean;
+  levelComplete: boolean;
+}
+
+const initialGameState: GameState = {
+  player: {
+    x: 50,
+    y: 300,
+    width: 32,
+    height: 48,
+    velocityX: 0,
+    velocityY: 0
+  },
+  platforms: [
+    { x: 0, y: 400, width: 800, height: 40 },
+    { x: 200, y: 300, width: 100, height: 20 },
+    { x: 400, y: 250, width: 100, height: 20 },
+    { x: 600, y: 200, width: 100, height: 20 }
+  ],
+  enemies: [
+    { x: 300, y: 368, width: 32, height: 32, velocityX: -2 },
+    { x: 500, y: 218, width: 32, height: 32, velocityX: -2 }
+  ],
+  coins: [
+    { x: 250, y: 250, width: 20, height: 20 },
+    { x: 450, y: 200, width: 20, height: 20 },
+    { x: 650, y: 150, width: 20, height: 20 }
+  ],
+  score: 0,
+  lives: 3,
+  gameOver: false,
+  levelComplete: false
 };
-
-const childCharacters: CharacterType[] = [
-  {
-    id: 'child1',
-    type: 'child',
-    name: 'Lily',
-    mood: 'happy',
-    sprite: 'https://i.imgur.com/8wEwwQa.png' // Placeholder image
-  },
-  {
-    id: 'child2',
-    type: 'child',
-    name: 'Max',
-    mood: 'happy',
-    sprite: 'https://i.imgur.com/vGMaQ9K.png' // Placeholder image
-  },
-  {
-    id: 'child3',
-    type: 'child',
-    name: 'Zoe',
-    mood: 'happy',
-    sprite: 'https://i.imgur.com/JYvKn8b.png' // Placeholder image
-  }
-];
-
-const petTypes: PetType[] = [
-  {
-    id: 'cat1',
-    type: 'cat',
-    name: 'Whiskers',
-    trait: 'Curious and mischievous',
-    description: 'A sleek black cat with bright green eyes that seems to judge your every move.',
-    difficulty: 3,
-    childAttachment: 4,
-    sprite: 'https://i.imgur.com/JwY3Ept.png' // Placeholder image
-  },
-  {
-    id: 'dog1',
-    type: 'dog',
-    name: 'Buddy',
-    trait: 'Loyal and energetic',
-    description: 'A small brown puppy that barks at everything and chews on furniture.',
-    difficulty: 4,
-    childAttachment: 5,
-    sprite: 'https://i.imgur.com/8XA9Pq6.png' // Placeholder image
-  },
-  {
-    id: 'chick1',
-    type: 'chick',
-    name: 'Peep',
-    trait: 'Tiny and adorable',
-    description: 'A fluffy yellow chick that chirps constantly and leaves droppings everywhere.',
-    difficulty: 2,
-    childAttachment: 3,
-    sprite: 'https://i.imgur.com/JHVnmhF.png' // Placeholder image
-  },
-  {
-    id: 'spider1',
-    type: 'spider',
-    name: 'Webster',
-    trait: 'Sneaky and resourceful',
-    description: 'A large hairy spider that keeps escaping its container and appearing in unexpected places.',
-    difficulty: 2,
-    childAttachment: 2,
-    sprite: 'https://i.imgur.com/KQtQKsJ.png' // Placeholder image
-  },
-  {
-    id: 'snail1',
-    type: 'snail',
-    name: 'Slick',
-    trait: 'Slow and slimy',
-    description: 'A garden snail that leaves trails of slime on everything it touches.',
-    difficulty: 1,
-    childAttachment: 2,
-    sprite: 'https://i.imgur.com/L8Lj0Hc.png' // Placeholder image
-  }
-];
-
-// Dad's witty lines
-const dadLines = [
-  "I'm not saying I'm going to eat your pet, but I'm not NOT saying that either...",
-  "Another pet? At this rate, we'll need to buy a zoo license!",
-  "Your spider friend? Oh, he went on vacation... to a farm... very far away...",
-  "Trust me, that chicken is much happier in the wild. Or in my stomach. I mean, in the wild!",
-  "I'm allergic to everything with fur, scales, feathers, and existence in general.",
-  "The landlord said no pets, but he didn't specify no pet-shaped meals!",
-  "I promise your snail is living its best life now. The sauce was delicious—I mean, the sunset was beautiful!",
-  "Your cat and I had a long talk about rent contributions. Turns out, he couldn't afford it."
-];
-
-// Decision templates
-const decisionTemplates: Record<string, Decision[]> = {
-  cat: [
-    {
-      id: 'eat-cat',
-      text: 'Cook a "Special" Stew',
-      type: 'eat',
-      description: 'Turn the cat into a hearty stew. The kids will never know...',
-      consequences: {
-        happiness: -3,
-        guilt: 4,
-        suspicion: 3,
-        health: 2
-      }
-    },
-    {
-      id: 'giveaway-cat',
-      text: 'Give to Mrs. Johnson',
-      type: 'giveaway',
-      description: 'Your elderly neighbor has been looking for company.',
-      consequences: {
-        happiness: -1,
-        guilt: 1,
-        suspicion: 1,
-        health: 0
-      }
-    },
-    {
-      id: 'release-cat',
-      text: 'Release in the Park',
-      type: 'release',
-      description: 'Let it join the local stray cat colony.',
-      consequences: {
-        happiness: -2,
-        guilt: 2,
-        suspicion: 0,
-        health: 0
-      }
-    }
-  ],
-  dog: [
-    {
-      id: 'eat-dog',
-      text: 'Make "Mystery Meat" Tacos',
-      type: 'eat',
-      description: 'The kids love taco night! They will never suspect a thing...',
-      consequences: {
-        happiness: -4,
-        guilt: 5,
-        suspicion: 4,
-        health: 1
-      }
-    },
-    {
-      id: 'giveaway-dog',
-      text: 'Give to the Fire Station',
-      type: 'giveaway',
-      description: 'The local firefighters might appreciate a mascot.',
-      consequences: {
-        happiness: -2,
-        guilt: 1,
-        suspicion: 1,
-        health: 0
-      }
-    },
-    {
-      id: 'release-dog',
-      text: 'Release at the Dog Park',
-      type: 'release',
-      description: 'It can find a new family among the dog lovers there.',
-      consequences: {
-        happiness: -2,
-        guilt: 3,
-        suspicion: 1,
-        health: 0
-      }
-    }
-  ],
-  chick: [
-    {
-      id: 'eat-chick',
-      text: 'Prepare "Tiny Nuggets"',
-      type: 'eat',
-      description: 'Just a small snack. The kids will think it flew away.',
-      consequences: {
-        happiness: -1,
-        guilt: 2,
-        suspicion: 1,
-        health: 1
-      }
-    },
-    {
-      id: 'giveaway-chick',
-      text: 'Give to Local Farm',
-      type: 'giveaway',
-      description: 'It can grow up with other chickens.',
-      consequences: {
-        happiness: -1,
-        guilt: 0,
-        suspicion: 0,
-        health: 0
-      }
-    },
-    {
-      id: 'release-chick',
-      text: 'Release in the Backyard',
-      type: 'release',
-      description: 'It might survive on its own... maybe?',
-      consequences: {
-        happiness: -1,
-        guilt: 3,
-        suspicion: 0,
-        health: 0
-      }
-    }
-  ],
-  spider: [
-    {
-      id: 'eat-spider',
-      text: 'Make "Crunchy" Cookies',
-      type: 'eat',
-      description: 'Extra protein in the chocolate chip cookies!',
-      consequences: {
-        happiness: 0,
-        guilt: 1,
-        suspicion: 2,
-        health: -1
-      }
-    },
-    {
-      id: 'giveaway-spider',
-      text: 'Give to Science Teacher',
-      type: 'giveaway',
-      description: 'The school\'s science lab could use it for education.',
-      consequences: {
-        happiness: 0,
-        guilt: 0,
-        suspicion: 0,
-        health: 0
-      }
-    },
-    {
-      id: 'release-spider',
-      text: 'Release in the Garden',
-      type: 'release',
-      description: 'It can eat pests and be useful out there.',
-      consequences: {
-        happiness: 0,
-        guilt: 0,
-        suspicion: 0,
-        health: 0
-      }
-    }
-  ],
-  snail: [
-    {
-      id: 'eat-snail',
-      text: 'Prepare "Escargot"',
-      type: 'eat',
-      description: 'A fancy French delicacy! The kids won\'t recognize it.',
-      consequences: {
-        happiness: 0,
-        guilt: 1,
-        suspicion: 1,
-        health: 0
-      }
-    },
-    {
-      id: 'giveaway-snail',
-      text: 'Give to Pet Store',
-      type: 'giveaway',
-      description: 'The local pet store might take it for their display.',
-      consequences: {
-        happiness: 0,
-        guilt: 0,
-        suspicion: 0,
-        health: 0
-      }
-    },
-    {
-      id: 'release-snail',
-      text: 'Release in the Garden',
-      type: 'release',
-      description: 'It can join its snail friends among the plants.',
-      consequences: {
-        happiness: 0,
-        guilt: 0,
-        suspicion: 0,
-        health: 0
-      }
-    }
-  ]
-};
-
-// Game states
-type GameState = 'intro' | 'dialogue' | 'decision' | 'outcome' | 'nextDay';
 
 const GameContainer = () => {
-  const [gameState, setGameState] = useState<GameState>('intro');
-  const [showIntro, setShowIntro] = useState(true);
-  const [day, setDay] = useState(1);
-  const [happiness, setHappiness] = useState(80);
-  const [guilt, setGuilt] = useState(10);
-  const [suspicion, setSuspicion] = useState(5);
-  const [health, setHealth] = useState(90);
-  const [petsHandled, setPetsHandled] = useState(0);
+  const [gameState, setGameState] = useState<GameState>(initialGameState);
+  const [isJumping, setIsJumping] = useState(false);
+  const [isGrounded, setIsGrounded] = useState(false);
+  const gameLoopRef = useRef<number | null>(null);
   
-  const [currentPet, setCurrentPet] = useState<PetType | null>(null);
-  const [currentChild, setCurrentChild] = useState<CharacterType | null>(null);
-  const [currentDialogue, setCurrentDialogue] = useState('');
-  const [currentSpeaker, setCurrentSpeaker] = useState('');
-  const [availableDecisions, setAvailableDecisions] = useState<Decision[]>([]);
+  // Key press hooks
+  const leftPressed = useKeyPress('ArrowLeft');
+  const rightPressed = useKeyPress('ArrowRight');
+  const jumpPressed = useKeyPress('ArrowUp');
+  const restartPressed = useKeyPress('r');
   
-  // Start the game
-  const startGame = () => {
-    setShowIntro(false);
-    startNewDay();
+  // Reset game
+  const resetGame = () => {
+    setGameState(initialGameState);
   };
   
-  // Start a new day in the game
-  const startNewDay = () => {
-    setDay(prev => prev + 1);
-    setGameState('dialogue');
-    
-    // Randomly select a child and pet
-    const randomChild = childCharacters[Math.floor(Math.random() * childCharacters.length)];
-    const randomPet = petTypes[Math.floor(Math.random() * petTypes.length)];
-    
-    setCurrentChild(randomChild);
-    setCurrentPet(randomPet);
-    
-    // Set initial dialogue
-    setCurrentSpeaker(randomChild.name);
-    setCurrentDialogue(`Dad! Look what I found! This is ${randomPet.name} the ${randomPet.type}. Can we keep it? Please, please, please!`);
+  // Check collisions between two objects
+  const checkCollision = (obj1: GameObject, obj2: GameObject) => {
+    return (
+      obj1.x < obj2.x + obj2.width &&
+      obj1.x + obj1.width > obj2.x &&
+      obj1.y < obj2.y + obj2.height &&
+      obj1.y + obj1.height > obj2.y
+    );
   };
   
-  // Handle dialogue completion
-  const handleDialogueComplete = () => {
-    if (currentSpeaker === currentChild?.name) {
-      // Child finished speaking, now dad responds
-      setCurrentSpeaker(dadCharacter.name);
-      setCurrentDialogue(getRandomDadLine());
-    } else {
-      // Dad finished speaking, show decision panel
-      setGameState('decision');
-      
-      // Set available decisions based on pet type
-      if (currentPet) {
-        setAvailableDecisions(decisionTemplates[currentPet.type]);
+  // Check if player is on a platform
+  const checkGrounded = (player: GameObject, platforms: GameObject[]) => {
+    for (const platform of platforms) {
+      if (
+        player.x + player.width > platform.x &&
+        player.x < platform.x + platform.width &&
+        player.y + player.height >= platform.y &&
+        player.y + player.height <= platform.y + 10
+      ) {
+        return true;
       }
     }
+    return false;
   };
   
-  // Handle decision made
-  const handleDecisionMade = (decision: Decision) => {
-    setGameState('outcome');
-    
-    // Apply consequences
-    setHappiness(prev => Math.max(0, Math.min(100, prev + decision.consequences.happiness)));
-    setGuilt(prev => Math.max(0, Math.min(100, prev + decision.consequences.guilt)));
-    setSuspicion(prev => Math.max(0, Math.min(100, prev + decision.consequences.suspicion)));
-    setHealth(prev => Math.max(0, Math.min(100, prev + decision.consequences.health)));
-    
-    // Increment pets handled counter
-    setPetsHandled(prev => prev + 1);
-    
-    // Set outcome dialogue
-    setCurrentSpeaker(dadCharacter.name);
-    
-    let outcomeText = '';
-    switch (decision.type) {
-      case 'eat':
-        outcomeText = `I'll take care of ${currentPet?.name}. Don't worry about it. *Later that evening, you serve a mysterious new dish for dinner*`;
-        break;
-      case 'giveaway':
-        outcomeText = `I found a nice new home for ${currentPet?.name}. They'll be much happier there, I promise.`;
-        break;
-      case 'release':
-        outcomeText = `I think ${currentPet?.name} would be happier in their natural habitat. I'll make sure they find a good spot.`;
-        break;
-    }
-    
-    setCurrentDialogue(outcomeText);
-  };
-  
-  // Handle outcome completion
-  const handleOutcomeComplete = () => {
-    setGameState('nextDay');
-    setCurrentSpeaker(currentChild?.name || '');
-    setCurrentDialogue(`*sniff* I'll miss ${currentPet?.name}. Maybe I'll find another pet tomorrow!`);
-  };
-  
-  // Handle next day
-  const handleNextDay = () => {
-    // Check for game over conditions
-    if (happiness <= 0 || guilt >= 100 || suspicion >= 100 || health <= 0) {
-      // Game over logic would go here
-      alert("Game Over!");
-      // Reset game
-      setShowIntro(true);
-      setDay(1);
-      setHappiness(80);
-      setGuilt(10);
-      setSuspicion(5);
-      setHealth(90);
-      setPetsHandled(0);
-    } else {
-      startNewDay();
-    }
-  };
-  
-  // Get a random dad line
-  const getRandomDadLine = () => {
-    return dadLines[Math.floor(Math.random() * dadLines.length)];
-  };
-
-  return (
-    <div className="game-container min-h-screen flex flex-col p-4">
-      {showIntro ? (
-        <GameIntro onStart={startGame} />
-      ) : (
-        <>
-          {/* Game HUD */}
-          <GameHUD 
-            day={day}
-            happiness={happiness}
-            guilt={guilt}
-            suspicion={suspicion}
-            health={health}
-            petsHandled={petsHandled}
-          />
+  // Game loop
+  useEffect(() => {
+    const gameLoop = () => {
+      if (gameState.gameOver || gameState.levelComplete) {
+        return;
+      }
+      
+      setGameState(prevState => {
+        // Create a copy of the player
+        const player = { ...prevState.player };
+        
+        // Handle horizontal movement
+        if (leftPressed) {
+          player.velocityX = -MOVEMENT_SPEED;
+        } else if (rightPressed) {
+          player.velocityX = MOVEMENT_SPEED;
+        } else {
+          player.velocityX = 0;
+        }
+        
+        // Handle jumping
+        const grounded = checkGrounded(player, prevState.platforms);
+        if (jumpPressed && grounded && !isJumping) {
+          player.velocityY = JUMP_FORCE;
+          setIsJumping(true);
+        }
+        
+        // Apply gravity
+        if (!grounded) {
+          player.velocityY += GRAVITY;
+        } else {
+          player.velocityY = 0;
+          setIsJumping(false);
+        }
+        
+        // Update player position
+        player.x += player.velocityX;
+        player.y += player.velocityY;
+        
+        // Keep player within bounds
+        if (player.x < 0) player.x = 0;
+        if (player.x + player.width > 800) player.x = 800 - player.width;
+        
+        // Update enemies
+        const enemies = prevState.enemies.map(enemy => {
+          const updatedEnemy = { ...enemy };
           
-          {/* Game Scene */}
-          <div className="flex-1 flex flex-col items-center justify-center my-8">
-            <div className="flex justify-center items-end gap-8 mb-8">
-              {currentChild && (
-                <Character 
-                  character={currentChild} 
-                  speaking={currentSpeaker === currentChild.name}
-                />
-              )}
-              
-              {currentPet && gameState !== 'outcome' && gameState !== 'nextDay' && (
-                <Pet pet={currentPet} isActive={true} />
-              )}
-              
-              <Character 
-                character={dadCharacter} 
-                speaking={currentSpeaker === dadCharacter.name}
-              />
+          // Move enemy
+          updatedEnemy.x += updatedEnemy.velocityX || 0;
+          
+          // Reverse direction if hitting edge of platform
+          const platformBelow = prevState.platforms.find(platform => 
+            updatedEnemy.x + updatedEnemy.width > platform.x &&
+            updatedEnemy.x < platform.x + platform.width &&
+            updatedEnemy.y + updatedEnemy.height === platform.y
+          );
+          
+          if (platformBelow) {
+            if (
+              updatedEnemy.x <= platformBelow.x || 
+              updatedEnemy.x + updatedEnemy.width >= platformBelow.x + platformBelow.width
+            ) {
+              updatedEnemy.velocityX = -(updatedEnemy.velocityX || 0);
+            }
+          }
+          
+          return updatedEnemy;
+        });
+        
+        // Check for coin collisions
+        let score = prevState.score;
+        const coins = prevState.coins.filter(coin => {
+          const collision = checkCollision(player, coin);
+          if (collision) {
+            score += 10;
+          }
+          return !collision;
+        });
+        
+        // Check for enemy collisions
+        let lives = prevState.lives;
+        let gameOver = prevState.gameOver;
+        
+        for (const enemy of enemies) {
+          if (checkCollision(player, enemy)) {
+            // Check if player is jumping on enemy
+            if (
+              player.velocityY > 0 &&
+              player.y + player.height < enemy.y + enemy.height / 2
+            ) {
+              // Remove enemy (would be handled differently in a full game)
+              enemy.y = 1000; // Move off screen
+            } else {
+              lives -= 1;
+              if (lives <= 0) {
+                gameOver = true;
+              } else {
+                // Reset player position after hit
+                player.x = 50;
+                player.y = 300;
+                player.velocityX = 0;
+                player.velocityY = 0;
+              }
+            }
+          }
+        }
+        
+        // Check for level complete
+        const levelComplete = coins.length === 0;
+        
+        return {
+          ...prevState,
+          player,
+          enemies,
+          coins,
+          score,
+          lives,
+          gameOver,
+          levelComplete
+        };
+      });
+    };
+    
+    // Start game loop
+    gameLoopRef.current = requestAnimationFrame(function loop() {
+      gameLoop();
+      gameLoopRef.current = requestAnimationFrame(loop);
+    });
+    
+    // Cleanup
+    return () => {
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current);
+      }
+    };
+  }, [leftPressed, rightPressed, jumpPressed, isJumping]);
+  
+  // Handle restart
+  useEffect(() => {
+    if (restartPressed && (gameState.gameOver || gameState.levelComplete)) {
+      resetGame();
+    }
+  }, [restartPressed, gameState.gameOver, gameState.levelComplete]);
+  
+  return (
+    <div className="game-container relative w-full max-w-4xl mx-auto h-[500px] bg-blue-200 overflow-hidden border-4 border-blue-800 rounded-lg">
+      {/* Game elements */}
+      <div className="game-world relative w-full h-full">
+        {/* Player */}
+        <Player 
+          x={gameState.player.x} 
+          y={gameState.player.y} 
+          width={gameState.player.width} 
+          height={gameState.player.height}
+          velocityX={gameState.player.velocityX || 0}
+        />
+        
+        {/* Platforms */}
+        {gameState.platforms.map((platform, index) => (
+          <Platform 
+            key={`platform-${index}`}
+            x={platform.x}
+            y={platform.y}
+            width={platform.width}
+            height={platform.height}
+          />
+        ))}
+        
+        {/* Enemies */}
+        {gameState.enemies.map((enemy, index) => (
+          <Enemy 
+            key={`enemy-${index}`}
+            x={enemy.x}
+            y={enemy.y}
+            width={enemy.width}
+            height={enemy.height}
+          />
+        ))}
+        
+        {/* Coins */}
+        {gameState.coins.map((coin, index) => (
+          <Coin 
+            key={`coin-${index}`}
+            x={coin.x}
+            y={coin.y}
+            width={coin.width}
+            height={coin.height}
+          />
+        ))}
+        
+        {/* Game HUD */}
+        <GameHUD 
+          score={gameState.score}
+          lives={gameState.lives}
+        />
+        
+        {/* Game over screen */}
+        {gameState.gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+            <div className="text-center p-8 bg-white rounded-lg">
+              <h2 className="text-2xl font-bold text-red-600 mb-4">Game Over!</h2>
+              <p className="mb-4">Your score: {gameState.score}</p>
+              <button 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={resetGame}
+              >
+                Play Again
+              </button>
             </div>
-            
-            {/* Dialogue or Decision Panel */}
-            {(gameState === 'dialogue' || gameState === 'outcome' || gameState === 'nextDay') && (
-              <DialogueBox 
-                text={currentDialogue}
-                speaker={currentSpeaker}
-                onComplete={
-                  gameState === 'dialogue' 
-                    ? handleDialogueComplete 
-                    : gameState === 'outcome'
-                    ? handleOutcomeComplete
-                    : handleNextDay
-                }
-              />
-            )}
-            
-            {gameState === 'decision' && currentPet && (
-              <DecisionPanel 
-                pet={currentPet}
-                decisions={availableDecisions}
-                onDecisionMade={handleDecisionMade}
-              />
-            )}
           </div>
-        </>
-      )}
+        )}
+        
+        {/* Level complete screen */}
+        {gameState.levelComplete && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+            <div className="text-center p-8 bg-white rounded-lg">
+              <h2 className="text-2xl font-bold text-green-600 mb-4">Level Complete!</h2>
+              <p className="mb-4">Your score: {gameState.score}</p>
+              <button 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={resetGame}
+              >
+                Play Again
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
