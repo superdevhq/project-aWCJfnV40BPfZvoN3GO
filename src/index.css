@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -34,21 +35,14 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Game-specific colors */
+    --game-bg: 215 30% 12%;
+    --game-text: 40 100% 97%;
+    --game-primary: 160 84% 39%;
+    --game-secondary: 280 75% 60%;
+    --game-accent: 35 100% 50%;
+    --game-panel: 215 30% 16%;
+    --game-border: 215 30% 22%;
   }
 
   .dark {
@@ -79,14 +73,6 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
@@ -98,4 +84,59 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Pixel art styling */
+.pixel-art {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Game-specific styles */
+.game-container {
+  background-color: hsl(var(--game-bg));
+  color: hsl(var(--game-text));
+}
+
+.game-panel {
+  background-color: hsl(var(--game-panel));
+  border: 2px solid hsl(var(--game-border));
+}
+
+.game-button {
+  background-color: hsl(var(--game-primary));
+  transition: all 0.2s ease;
+}
+
+.game-button:hover {
+  background-color: hsl(var(--game-accent));
+  transform: scale(1.05);
+}
+
+.game-button-secondary {
+  background-color: hsl(var(--game-secondary));
+}
+
+.game-button-secondary:hover {
+  background-color: hsl(var(--game-accent));
+}
+
+/* Pixel animations */
+@keyframes pixel-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.pixel-bounce {
+  animation: pixel-bounce 1s infinite;
+}
+
+@keyframes pixel-fade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.pixel-fade {
+  animation: pixel-fade 0.5s forwards;
 }
