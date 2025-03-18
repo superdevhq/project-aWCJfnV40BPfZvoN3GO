@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import Player from './Player';
 import Platform from './Platform';
@@ -8,9 +7,10 @@ import GameHUD from './GameHUD';
 import { useKeyPress } from '../hooks/useKeyPress';
 
 // Game constants
-const GRAVITY = 0.5;
-const JUMP_FORCE = -12;
+const GRAVITY = 0.6;
+const JUMP_FORCE = -15;
 const MOVEMENT_SPEED = 5;
+const JUMP_SOUND_URL = 'https://assets.mixkit.co/sfx/preview/mixkit-player-jumping-in-a-video-game-2043.mp3';
 
 // Game types
 export interface GameObject {
@@ -46,7 +46,8 @@ const initialGameState: GameState = {
     { x: 0, y: 400, width: 800, height: 40 },
     { x: 200, y: 300, width: 100, height: 20 },
     { x: 400, y: 250, width: 100, height: 20 },
-    { x: 600, y: 200, width: 100, height: 20 }
+    { x: 600, y: 200, width: 100, height: 20 },
+    { x: 300, y: 150, width: 100, height: 20 }
   ],
   enemies: [
     { x: 300, y: 368, width: 32, height: 32, velocityX: -2 },
@@ -55,7 +56,8 @@ const initialGameState: GameState = {
   coins: [
     { x: 250, y: 250, width: 20, height: 20 },
     { x: 450, y: 200, width: 20, height: 20 },
-    { x: 650, y: 150, width: 20, height: 20 }
+    { x: 650, y: 150, width: 20, height: 20 },
+    { x: 350, y: 100, width: 20, height: 20 }
   ],
   score: 0,
   lives: 3,
@@ -66,18 +68,20 @@ const initialGameState: GameState = {
 const GameContainer = () => {
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [isJumping, setIsJumping] = useState(false);
-  const [isGrounded, setIsGrounded] = useState(false);
+  const [jumpSound, setJumpSound] = useState<HTMLAudioElement | null>(null);
   const gameLoopRef = useRef<number | null>(null);
   
   // Key press hooks
   const leftPressed = useKeyPress('ArrowLeft');
   const rightPressed = useKeyPress('ArrowRight');
   const jumpPressed = useKeyPress('ArrowUp');
+  const spacePressed = useKeyPress(' ');
   const restartPressed = useKeyPress('r');
   
   // Reset game
   const resetGame = () => {
     setGameState(initialGameState);
+    setIsJumping(false);
   };
   
   // Check collisions between two objects
@@ -97,7 +101,8 @@ const GameContainer = () => {
         player.x + player.width > platform.x &&
         player.x < platform.x + platform.width &&
         player.y + player.height >= platform.y &&
-        player.y + player.height <= platform.y + 10
+        player.y + player.height <= platform.y + 10 &&
+        player.velocityY >= 0
       ) {
         return true;
       }
@@ -122,19 +127,30 @@ const GameContainer = () => {
         } else if (rightPressed) {
           player.velocityX = MOVEMENT_SPEED;
         } else {
-          player.velocityX = 0;
+          player.velocityX = player.velocityX * 0.8;
+          if (Math.abs(player.velocityX) < 0.1) player.velocityX = 0;
         }
         
-        // Handle jumping
+        // Handle jumping - allow both up arrow and space
+        const shouldJump = (jumpPressed || spacePressed);
         const grounded = checkGrounded(player, prevState.platforms);
-        if (jumpPressed && grounded && !isJumping) {
+        if (shouldJump && grounded && !isJumping) {
           player.velocityY = JUMP_FORCE;
           setIsJumping(true);
+          
+          // Play jump sound
+          if (jumpSound) {
+            jumpSound.currentTime = 0;
+            jumpSound.play().catch(e => console.log("Error playing sound:", e));
+          }
         }
         
         // Apply gravity
         if (!grounded) {
           player.velocityY += GRAVITY;
+          
+          // Cap falling speed
+          if (player.velocityY > 15) player.velocityY = 15;
         } else {
           player.velocityY = 0;
           setIsJumping(false);
@@ -175,14 +191,13 @@ const GameContainer = () => {
         });
         
         // Check for coin collisions
-        let score = prevState.score;
-        const coins = prevState.coins.filter(coin => {
+        let score = prevState.coins.some(coin => {
           const collision = checkCollision(player, coin);
           if (collision) {
             score += 10;
           }
           return !collision;
-        });
+        }) ? prevState.score + 10 : prevState.score;
         
         // Check for enemy collisions
         let lives = prevState.lives;
@@ -240,7 +255,7 @@ const GameContainer = () => {
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [leftPressed, rightPressed, jumpPressed, isJumping]);
+  }, [leftPressed, rightPressed, jumpPressed, spacePressed, isJumping, jumpSound]);
   
   // Handle restart
   useEffect(() => {
@@ -248,6 +263,9 @@ const GameContainer = () => {
       resetGame();
     }
   }, [restartPressed, gameState.gameOver, gameState.levelComplete]);
+  
+  // Visual jump indicator
+  const jumpIndicator = isJumping ? "Jumping!" : (checkGrounded(gameState.player, gameState.platforms) ? "Ready" : "Falling");
   
   return (
     <div className="game-container relative w-full max-w-4xl mx-auto h-[500px] bg-blue-200 overflow-hidden border-4 border-blue-800 rounded-lg">
@@ -260,6 +278,7 @@ const GameContainer = () => {
           width={gameState.player.width} 
           height={gameState.player.height}
           velocityX={gameState.player.velocityX || 0}
+          isJumping={isJumping}
         />
         
         {/* Platforms */}
@@ -299,6 +318,7 @@ const GameContainer = () => {
         <GameHUD 
           score={gameState.score}
           lives={gameState.lives}
+          jumpState={jumpIndicator}
         />
         
         {/* Game over screen */}
@@ -332,6 +352,11 @@ const GameContainer = () => {
             </div>
           </div>
         )}
+        
+        {/* Jump controls help */}
+        <div className="absolute bottom-4 right-4 bg-black/50 text-white p-2 rounded text-sm">
+          Press <span className="font-bold">Up Arrow</span> or <span className="font-bold">Space</span> to jump
+        </div>
       </div>
     </div>
   );
